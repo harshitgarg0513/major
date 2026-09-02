@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  sdn-env:
+    build: .
+    container_name: sdn_iot_env
+    # Mininet requires network privileges to create namespaces and interfaces
+    privileged: true
+    network_mode: host
+    volumes:
+      - .:/app
+    # Ensure openvswitch is running, then keep the container alive
+    command: /bin/bash -c "service openvswitch-switch start && tail -f /dev/null"

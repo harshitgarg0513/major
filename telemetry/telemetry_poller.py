@@ -21,18 +21,17 @@ class TelemetryPoller(app_manager.OSKenApp):
         # Load topology to map dpid+port to link_id
         # We assume dpid is the integer part of the node_id (e.g. s1 -> 1)
         # We expect to run from within the telemetry/ folder or project root
-        topo_path = os.path.join(os.path.dirname(__file__), '../Day-0/topology_registry.yaml')
-        if not os.path.exists(topo_path):
-            topo_path = os.path.join(os.path.dirname(__file__), '../../Day-0/topology_registry.yaml')
-            
+        topo_path = os.path.join(os.path.dirname(__file__), '../contracts/topology_registry.yaml')
         with open(topo_path, 'r') as f:
             self.topology = yaml.safe_load(f)
 
         self.port_to_link = {}
         self.link_endpoints = {}
-        
+        self.link_capacity = {}
+
         for link in self.topology.get('links', []):
             link_id = link['link_id']
+            self.link_capacity[link_id] = link.get('capacity_mbps', 100)
             
             def get_dpid_port(endpoint):
                 dpid = int(endpoint['node_id'].replace('s', ''))
@@ -56,6 +55,7 @@ class TelemetryPoller(app_manager.OSKenApp):
         db_path = os.path.join(os.path.dirname(__file__), '../test.db')
         self.db_conn = sqlite3.connect(db_path, check_same_thread=False)
         self.db_conn.execute('PRAGMA journal_mode=WAL;')
+        self.db_conn.execute('PRAGMA foreign_keys=ON;')
 
         # Start polling thread
         self.monitor_thread = hub.spawn(self._monitor)
@@ -189,23 +189,25 @@ class TelemetryPoller(app_manager.OSKenApp):
                 packet_loss_pct = (stats['tx_dropped_delta'] / float(total_pkts)) * 100.0
                 
             active_flows = stats['active_flows']
-            
+            capacity = self.link_capacity.get(link_id, 100)
+            utilization_pct = min(100.0, (throughput_mbps / capacity) * 100.0) if capacity else 0.0
+
             record_id = str(uuid.uuid4())
-            
+
             try:
                 cursor.execute(
                     '''
                     INSERT INTO link_telemetry (
-                        record_id, ts_epoch_ms, link_id, latency_ms, latency_method, 
-                        packet_loss_pct, throughput_mbps, utilization_pct, 
+                        record_id, ts_epoch_ms, link_id, latency_ms, latency_method,
+                        packet_loss_pct, throughput_mbps, utilization_pct,
                         queue_length, active_flows, poll_interval_ms
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''',
                     (
-                        record_id, now_ms, link_id, 
-                        0.0, 'lldp_probe', # Latency placeholders
-                        packet_loss_pct, throughput_mbps, 
-                        0.0, 0, # Utilization/Queue placeholders
+                        record_id, now_ms, link_id,
+                        0.0, 'configured_static',
+                        packet_loss_pct, throughput_mbps,
+                        utilization_pct, 0,
                         active_flows, POLL_INTERVAL_MS
                     )
                 )

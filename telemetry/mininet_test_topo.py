@@ -24,6 +24,8 @@ class MyTopo(Topo):
         self.addLink(h1, s1, port1=1, port2=2)
         self.addLink(h2, s2, port1=1, port2=2)
 
+topos = {'mytopo': (MyTopo, {})}
+
 if __name__ == '__main__':
     setLogLevel('info')
     topo = MyTopo()

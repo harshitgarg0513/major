@@ -7,10 +7,8 @@ import jsonschema
 
 app = FastAPI(title="Prediction Service Stub")
 
-# Load the Day-0 Contract schema
-schema_path = os.path.join(os.path.dirname(__file__), '../Day-0/prediction_interface.json')
-if not os.path.exists(schema_path):
-    schema_path = os.path.join(os.path.dirname(__file__), '../../Day-0/prediction_interface.json')
+# Load contract schema from contracts/
+schema_path = os.path.join(os.path.dirname(__file__), '../contracts/prediction_interface.json')
 
 with open(schema_path, 'r') as f:
     CONTRACT_SCHEMA = json.load(f)

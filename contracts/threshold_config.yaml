@@ -1,0 +1,11 @@
+# Confidence-threshold policy — PLACEHOLDER values.
+# Real values are a Phase 5 empirical finding (Q6), not a Day-0 decision.
+# Retune here only — never hardcode thresholds in recovery/ code.
+version: 1
+bins:
+  - action: "monitor"
+    max_probability: 0.4      # [0.0, 0.4)
+  - action: "prepare_backup"
+    max_probability: 0.7      # [0.4, 0.7)
+  - action: "reroute"
+    max_probability: 1.0      # [0.7, 1.0]

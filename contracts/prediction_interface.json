@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prediction Interface — Day 0 Contract v1.0",
+  "definitions": {
+    "request": {
+      "type": "object",
+      "required": ["schema_version", "target_type", "target_id", "window_seconds", "telemetry_window", "horizon_seconds"],
+      "properties": {
+        "schema_version": {"type": "string"},
+        "target_type": {"type": "string", "enum": ["link", "node"]},
+        "target_id": {"type": "string"},
+        "window_seconds": {"type": "integer", "minimum": 1, "default": 30},
+        "telemetry_window": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "horizon_seconds": {"type": "integer", "minimum": 1}
+      },
+      "example": {
+        "schema_version": "1.0",
+        "target_type": "link",
+        "target_id": "L1",
+        "window_seconds": 30,
+        "telemetry_window": [
+          {"ts_epoch_ms": 1735999200000, "latency_ms": 4.2, "packet_loss_pct": 0.0,
+           "throughput_mbps": 12.4, "utilization_pct": 12.4, "queue_length": 3, "active_flows": 5}
+        ],
+        "horizon_seconds": 5
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["schema_version", "target_type", "target_id", "failure_probability",
+                   "horizon_seconds", "model_version", "inference_ts_epoch_ms", "cold_start"],
+      "properties": {
+        "schema_version": {"type": "string"},
+        "target_type": {"type": "string", "enum": ["link", "node"]},
+        "target_id": {"type": "string"},
+        "failure_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "horizon_seconds": {"type": "integer", "minimum": 1},
+        "model_version": {"type": "string"},
+        "inference_ts_epoch_ms": {"type": "integer", "minimum": 0},
+        "cold_start": {"type": "boolean"}
+      },
+      "example": {
+        "schema_version": "1.0",
+        "target_type": "link",
+        "target_id": "L1",
+        "failure_probability": 0.83,
+        "horizon_seconds": 5,
+        "model_version": "rf_v1",
+        "inference_ts_epoch_ms": 1735999230000,
+        "cold_start": false
+      }
+    }
+  }
+}

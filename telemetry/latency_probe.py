@@ -23,10 +23,7 @@ class LatencyProbe(app_manager.OSKenApp):
         self.datapaths = {}
 
         # Load topology
-        topo_path = os.path.join(os.path.dirname(__file__), '../Day-0/topology_registry.yaml')
-        if not os.path.exists(topo_path):
-            topo_path = os.path.join(os.path.dirname(__file__), '../../Day-0/topology_registry.yaml')
-            
+        topo_path = os.path.join(os.path.dirname(__file__), '../contracts/topology_registry.yaml')
         with open(topo_path, 'r') as f:
             self.topology = yaml.safe_load(f)
 
@@ -36,6 +33,7 @@ class LatencyProbe(app_manager.OSKenApp):
         db_path = os.path.join(os.path.dirname(__file__), '../test.db')
         self.db_conn = sqlite3.connect(db_path, check_same_thread=False)
         self.db_conn.execute('PRAGMA journal_mode=WAL;')
+        self.db_conn.execute('PRAGMA foreign_keys=ON;')
 
         self.monitor_thread = hub.spawn(self._monitor)
 

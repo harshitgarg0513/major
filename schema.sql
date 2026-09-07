@@ -1,4 +1,5 @@
 -- Topology Nodes table for the registry
+-- SQLite: enable foreign keys before running — PRAGMA foreign_keys = ON;
 CREATE TABLE topology_nodes (
     node_id TEXT PRIMARY KEY,
     kind TEXT NOT NULL,

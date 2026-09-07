@@ -1,0 +1,11 @@
+# Groups fault-log and recovery-action records into a specific Phase 5 trial.
+# Required from Phase 5 onward; irrelevant during earlier ad-hoc dataset building.
+version: 1
+runs:
+  - run_id: "run_0007"
+    condition: "predictive"        # static | reactive | predictive
+    scenario: "congestion_burst"    # link_failure | node_failure | congestion_burst | abnormal_traffic
+    repetition_index: 3
+    start_ts_epoch_ms: 1735999200000
+    end_ts_epoch_ms: 1735999260000
+    notes: null

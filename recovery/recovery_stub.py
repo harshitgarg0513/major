@@ -12,10 +12,8 @@ logger = logging.getLogger("recovery_stub")
 
 app = FastAPI(title="Recovery Action-Executor Stub")
 
-# Load the Day-0 Contract schema
-schema_path = os.path.join(os.path.dirname(__file__), '../Day-0/recovery_interface.json')
-if not os.path.exists(schema_path):
-    schema_path = os.path.join(os.path.dirname(__file__), '../../Day-0/recovery_interface.json')
+# Load contract schema from contracts/
+schema_path = os.path.join(os.path.dirname(__file__), '../contracts/recovery_interface.json')
 
 with open(schema_path, 'r') as f:
     CONTRACT_SCHEMA = json.load(f)
@@ -55,7 +53,7 @@ async def execute_action(request: Request):
         "verification": {
             "resolved": True,
             "checked_ts_epoch_ms": now_ms,
-            "method": "stub_verification"
+            "method": "telemetry_recheck"
         }
     }
 

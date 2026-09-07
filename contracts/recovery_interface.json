@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Recovery Action Interface — Day 0 Contract v1.0",
+  "definitions": {
+    "action_request": {
+      "type": "object",
+      "required": ["schema_version", "action_id", "target", "new_path", "reason", "requested_ts_epoch_ms"],
+      "properties": {
+        "schema_version": {"type": "string"},
+        "action_id": {"type": "string", "format": "uuid"},
+        "target": {
+          "type": "object",
+          "required": ["type", "id"],
+          "properties": {
+            "type": {"type": "string", "enum": ["link", "node"]},
+            "id": {"type": "string"}
+          }
+        },
+        "new_path": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "reason": {"type": "string", "enum": ["static", "reactive", "predictive", "manual"]},
+        "triggering_probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "run_id": {"type": ["string", "null"], "description": "FK -> experiment_runs. Null pre-Phase-5, required from Phase 5 onward."},
+        "requested_ts_epoch_ms": {"type": "integer", "minimum": 0}
+      },
+      "example": {
+        "schema_version": "1.0",
+        "action_id": "d5b3e4c0-3333-4a2b-9c3d-000000000001",
+        "target": {"type": "link", "id": "L1"},
+        "new_path": ["s1", "s3", "s4", "s2"],
+        "reason": "predictive",
+        "triggering_probability": 0.83,
+        "run_id": "run_0007",
+        "requested_ts_epoch_ms": 1735999230000
+      }
+    },
+    "action_confirmation": {
+      "type": "object",
+      "required": ["schema_version", "action_id", "status", "applied_ts_epoch_ms", "verification"],
+      "properties": {
+        "schema_version": {"type": "string"},
+        "action_id": {"type": "string", "format": "uuid"},
+        "status": {"type": "string", "enum": ["success", "failed", "partial"]},
+        "applied_ts_epoch_ms": {"type": "integer", "minimum": 0},
+        "verification": {
+          "type": "object",
+          "required": ["resolved", "checked_ts_epoch_ms", "method"],
+          "properties": {
+            "resolved": {"type": "boolean"},
+            "checked_ts_epoch_ms": {"type": "integer", "minimum": 0},
+            "method": {"type": "string"}
+          }
+        }
+      },
+      "example": {
+        "schema_version": "1.0",
+        "action_id": "d5b3e4c0-3333-4a2b-9c3d-000000000001",
+        "status": "success",
+        "applied_ts_epoch_ms": 1735999230500,
+        "verification": {"resolved": true, "checked_ts_epoch_ms": 1735999235500, "method": "telemetry_recheck"}
+      }
+    }
+  }
+}

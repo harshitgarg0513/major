@@ -7,9 +7,10 @@ Predictive self-healing for SDN-controlled IoT networks. This repo collects link
 ```bash
 ./setup_env.sh          # creates venv + installs deps (Mac/local dev)
 source venv/bin/activate
-python3 network/topology_builder.py   # sync contracts/topology_registry.yaml
-python telemetry/db_init.py           # creates test.db with topology + schema
+python telemetry/db_init.py           # creates test.db from committed contracts/topology_registry.yaml
 ```
+
+`network/topology_builder.py` requires Mininet (Linux/Docker only) — run it inside the Docker container when the Mininet topology changes; see **8.2b/8.2c** below.
 
 ## Day-0 Manual Test Checklist
 
@@ -69,7 +70,7 @@ sqlite3 test.db "SELECT run_id, condition FROM experiment_runs;"
 **FK rejection test (should error):**
 
 ```bash
-sqlite3 test.db "PRAGMA foreign_keys=ON; INSERT INTO link_telemetry (record_id, ts_epoch_ms, link_id, latency_ms, latency_method, packet_loss_pct, throughput_mbps, utilization_pct, queue_length, active_flows, poll_interval_ms) VALUES ('x', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000);"
+sqlite3 test.db "PRAGMA foreign_keys=ON; INSERT INTO link_telemetry (record_id, ts_epoch_ms, link_id, latency_ms, latency_method, packet_loss_pct, throughput_mbps, utilization_pct, queue_length, active_flows, poll_interval_ms, is_partial) VALUES ('x', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000, 0);"
 ```
 
 ---
@@ -200,14 +201,23 @@ mininet> h2 iperf3 -c h1 -b 10M -t 120
 mininet> h1 python3 telemetry/node_collector.py --node-id h1 --once
 ```
 
+**Node CPU scope:** default Mininet shares the PID namespace — `cpu_pct`/`ram_pct` are VM-wide, tagged `measurement_scope='vm_shared'`. Run `./scripts/test_node_cpu_isolation.sh` inside Docker before using these columns in Stage 5B.
+
 Wait ~30 seconds (first poll skipped for counter deltas), then query:
 
 ```bash
 sqlite3 /app/test.db "
   SELECT ts_epoch_ms, link_id, throughput_mbps, utilization_pct,
-         latency_ms, latency_method, queue_length, packet_loss_pct
+         latency_ms, latency_method, queue_length, packet_loss_pct, is_partial
   FROM link_telemetry ORDER BY ts_epoch_ms DESC LIMIT 10;
 "
+```
+
+**Filter partial OpenFlow stat cycles (Stage 5B):**
+
+```bash
+sqlite3 /app/test.db "SELECT COUNT(*) FROM link_telemetry WHERE is_partial = 1;"
+# Use WHERE is_partial = 0 for trend analysis
 ```
 
 **Expect (8.2b throughput):** one row per timestamp with **both** real `throughput_mbps` (~8–12 Mbps) **and** real `latency_ms` (~10 ms) — not separate half-rows.
@@ -273,9 +283,9 @@ docs/        Personal logs (see docs/personal_log_template.md)
 milestones/  Phase-end integration artifacts
 ```
 
-### Regenerating topology registry
+### Regenerating topology registry (Docker / Linux only)
 
-Whenever `network/mininet_test_topo.py` changes:
+Requires Mininet. Run inside the Docker container whenever `network/mininet_test_topo.py` changes:
 
 ```bash
 python3 network/topology_builder.py

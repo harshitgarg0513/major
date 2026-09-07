@@ -42,6 +42,7 @@ CREATE TABLE link_telemetry (
     queue_length INTEGER NOT NULL,
     active_flows INTEGER NOT NULL,
     poll_interval_ms INTEGER NOT NULL,
+    is_partial INTEGER NOT NULL DEFAULT 0 CHECK (is_partial IN (0, 1)),
     FOREIGN KEY (link_id) REFERENCES topology_links(link_id)
 );
 
@@ -54,6 +55,8 @@ CREATE TABLE node_telemetry (
     ram_pct REAL,
     active_flows INTEGER NOT NULL,
     source TEXT NOT NULL,
+    measurement_scope TEXT NOT NULL DEFAULT 'vm_shared'
+        CHECK (measurement_scope IN ('host_isolated', 'vm_shared')),
     FOREIGN KEY (node_id) REFERENCES topology_nodes(node_id)
 );
 
@@ -110,6 +113,7 @@ CREATE TABLE recovery_actions (
 -- Indexes for performance on timeseries and foreign keys
 CREATE INDEX idx_link_telemetry_ts ON link_telemetry(ts_epoch_ms);
 CREATE INDEX idx_link_telemetry_link_id ON link_telemetry(link_id);
+CREATE INDEX idx_link_telemetry_is_partial ON link_telemetry(is_partial);
 
 CREATE INDEX idx_node_telemetry_ts ON node_telemetry(ts_epoch_ms);
 CREATE INDEX idx_node_telemetry_node_id ON node_telemetry(node_id);

@@ -320,7 +320,8 @@ class LinkTelemetryCollector(app_manager.OSKenApp):
                 continue
 
             expected_eps = len(self.link_endpoints.get(link_id, []))
-            if stats["ep_count"] < expected_eps:
+            is_partial = stats["ep_count"] < expected_eps
+            if is_partial:
                 self.logger.warning(
                     "Partial OpenFlow stats for %s: ep_count=%d expected=%d",
                     link_id,
@@ -347,8 +348,8 @@ class LinkTelemetryCollector(app_manager.OSKenApp):
                     INSERT INTO link_telemetry (
                         record_id, ts_epoch_ms, link_id, latency_ms, latency_method,
                         packet_loss_pct, throughput_mbps, utilization_pct,
-                        queue_length, active_flows, poll_interval_ms
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        queue_length, active_flows, poll_interval_ms, is_partial
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         str(uuid.uuid4()),
@@ -362,6 +363,7 @@ class LinkTelemetryCollector(app_manager.OSKenApp):
                         queue_length,
                         stats["active_flows"],
                         POLL_INTERVAL_MS,
+                        1 if is_partial else 0,
                     ),
                 )
             except sqlite3.Error as exc:

@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Telemetry Records — Day 0 Contract v1.1",
+  "title": "Telemetry Records — Day 0 Contract v1.2",
   "definitions": {
     "link_telemetry": {
       "type": "object",
       "required": ["record_id", "ts_epoch_ms", "link_id", "latency_ms", "latency_method",
                    "packet_loss_pct", "throughput_mbps", "utilization_pct", "queue_length",
-                   "active_flows", "poll_interval_ms"],
+                   "active_flows", "poll_interval_ms", "is_partial"],
       "properties": {
         "record_id": {"type": "string", "format": "uuid"},
         "ts_epoch_ms": {"type": "integer", "minimum": 0, "description": "Time reply/reading was received, not when poll was sent."},
@@ -18,7 +18,8 @@
         "utilization_pct": {"type": "number", "minimum": 0, "maximum": 100},
         "queue_length": {"type": "integer", "minimum": 0, "description": "Via tc/netem backlog (pyroute2), not OVS/OpenFlow."},
         "active_flows": {"type": "integer", "minimum": 0, "description": "Via of_stats flow-table query filtered to this link's egress port."},
-        "poll_interval_ms": {"type": "integer", "minimum": 1}
+        "poll_interval_ms": {"type": "integer", "minimum": 1},
+        "is_partial": {"type": "boolean", "description": "True when OpenFlow stats arrived from fewer endpoints than the link has (async reply race). Filter these out for Stage 5B trend analysis."}
       },
       "additionalProperties": false,
       "example": {
@@ -32,20 +33,22 @@
         "utilization_pct": 12.4,
         "queue_length": 3,
         "active_flows": 5,
-        "poll_interval_ms": 1000
+        "poll_interval_ms": 1000,
+        "is_partial": false
       }
     },
     "node_telemetry": {
       "type": "object",
-      "required": ["record_id", "ts_epoch_ms", "node_id", "active_flows", "source"],
+      "required": ["record_id", "ts_epoch_ms", "node_id", "active_flows", "source", "measurement_scope"],
       "properties": {
         "record_id": {"type": "string", "format": "uuid"},
         "ts_epoch_ms": {"type": "integer", "minimum": 0},
         "node_id": {"type": "string", "pattern": "^[sh][0-9]+$"},
-        "cpu_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Always null for kind:switch (shared ovs-vswitchd process, no per-switch CPU). Populated via psutil for kind:host."},
-        "ram_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Same nullability rule as cpu_pct."},
+        "cpu_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Always null for kind:switch (shared ovs-vswitchd). For kind:host, meaning depends on measurement_scope — vm_shared means whole VM/container, not per-Mininet-host."},
+        "ram_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Same scope rules as cpu_pct."},
         "active_flows": {"type": "integer", "minimum": 0, "description": "Via of_stats; always 0 for hosts."},
-        "source": {"type": "string", "enum": ["psutil", "of_stats"]}
+        "source": {"type": "string", "enum": ["psutil", "of_stats"]},
+        "measurement_scope": {"type": "string", "enum": ["host_isolated", "vm_shared"], "description": "host_isolated: per-host PID/cgroup accounting. vm_shared: psutil reads host-wide /proc (default Mininet — network ns only, PID ns shared)."}
       },
       "additionalProperties": false,
       "example": {
@@ -55,7 +58,8 @@
         "cpu_pct": 12.5,
         "ram_pct": 34.0,
         "active_flows": 0,
-        "source": "psutil"
+        "source": "psutil",
+        "measurement_scope": "vm_shared"
       }
     }
   }

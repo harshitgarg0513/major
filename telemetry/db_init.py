@@ -80,8 +80,8 @@ def verify_fk_rejects_bad_link(conn: sqlite3.Connection) -> bool:
             INSERT INTO link_telemetry (
                 record_id, ts_epoch_ms, link_id, latency_ms, latency_method,
                 packet_loss_pct, throughput_mbps, utilization_pct,
-                queue_length, active_flows, poll_interval_ms
-            ) VALUES ('bad-link', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000)
+                queue_length, active_flows, poll_interval_ms, is_partial
+            ) VALUES ('bad-link', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000, 0)
             """
         )
         conn.commit()

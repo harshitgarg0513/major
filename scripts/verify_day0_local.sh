@@ -3,11 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "=== Regenerate topology registry ==="
 source venv/bin/activate
-python3 network/topology_builder.py
 
-echo ""
 echo "=== 8.1 Repo structure ==="
 find . -maxdepth 2 -not -path './venv/*' -not -path './.git/*' | sort
 

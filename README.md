@@ -12,6 +12,21 @@ python telemetry/db_init.py           # creates test.db from committed contracts
 
 `network/topology_builder.py` requires Mininet (Linux/Docker only) — run it inside the Docker container when the Mininet topology changes; see **8.2b/8.2c** below.
 
+## Phase 1 — Foundations (current milestone)
+
+All four subsystems have independent proofs. See [`milestones/phase1/README.md`](./milestones/phase1/README.md) for the mentor walkthrough.
+
+```bash
+source venv/bin/activate
+./scripts/verify_phase1.sh          # Members 2–4 (local)
+# Member 1 (Docker):
+docker exec -it sdn_iot_env bash /app/network/phase1_ping_demo.sh
+```
+
+Project decisions (controller, thresholds, known gaps): [`contracts/project_decisions.yaml`](./contracts/project_decisions.yaml)
+
+Personal logs: [`docs/member1_network_log.md`](./docs/member1_network_log.md) … [`docs/member4_recovery_log.md`](./docs/member4_recovery_log.md)
+
 ## Day-0 Manual Test Checklist
 
 Run these in order. Each block maps to Section 8 of the Day-0 contracts doc.

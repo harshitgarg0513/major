@@ -1,0 +1,45 @@
+# Phase 1 project decisions (solo checkpoint — revise when team forms)
+
+version: 1
+decided_at: "2026-09-07"
+status: phase1_provisional
+
+controller:
+  choice: os-ken
+  rationale: >
+    Python-native; same language as telemetry collector, ML pipeline, and recovery
+    stubs. Lower setup cost than ONOS/JVM on a student VM. ONOS would give mature
+    LLDP link discovery for free, but we implement our own probe in telemetry_collector.py.
+
+confidence_thresholds:
+  source: contracts/threshold_config.yaml
+  status: placeholder
+  values:
+    monitor: "< 0.4"
+    prepare_backup: "0.4 – 0.7"
+    reroute: ">= 0.7"
+  rationale: >
+    Phase 5 empirical tuning (proposal Q6). Placeholders exist so recovery code can
+    run against fake inputs in Phase 2; not treated as final.
+
+experiment_repetitions:
+  per_scenario: 5
+  rationale: >
+    Proposal Section 9 says count is finalized after baseline variance in Stage 4.
+    Using 5 as a working default for Phase 5 planning until real variance is measured.
+
+known_limitations:
+  queue_length:
+    status: implemented_not_verified
+    note: >
+      pyroute2 tc/netem backlog collector exists in telemetry_collector.py but has
+      NOT been confirmed against a real saturated queue in Docker yet. Run the README
+      saturation test (iperf 200M past max_queue_size=100) before trusting the column.
+
+  host_cpu_ram:
+    status: tagged_not_lockstep_tested
+    note: >
+      node_collector.py auto-tags measurement_scope=vm_shared for default Mininet
+      (shared PID namespace). Live lockstep isolation test (scripts/test_node_cpu_isolation.sh)
+      has NOT been run yet — do not use cpu_pct as per-host precursor signal until tested
+      or cgroup isolation is added.

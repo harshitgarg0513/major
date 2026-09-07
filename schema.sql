@@ -58,11 +58,13 @@ CREATE TABLE node_telemetry (
 );
 
 -- Fault Injection Log
+-- target_link_id / target_node_id enforce polymorphic referential integrity.
 CREATE TABLE fault_log (
     event_id TEXT PRIMARY KEY,
     fault_type TEXT NOT NULL,
-    target_type TEXT NOT NULL,
-    target_id TEXT NOT NULL,
+    target_type TEXT NOT NULL CHECK (target_type IN ('link', 'node')),
+    target_link_id TEXT,
+    target_node_id TEXT,
     start_ts_epoch_ms BIGINT NOT NULL,
     end_ts_epoch_ms BIGINT,
     severity_params TEXT,
@@ -70,15 +72,22 @@ CREATE TABLE fault_log (
     injected_by TEXT NOT NULL,
     run_id TEXT,
     notes TEXT,
-    FOREIGN KEY (run_id) REFERENCES experiment_runs(run_id)
+    FOREIGN KEY (target_link_id) REFERENCES topology_links(link_id),
+    FOREIGN KEY (target_node_id) REFERENCES topology_nodes(node_id),
+    FOREIGN KEY (run_id) REFERENCES experiment_runs(run_id),
+    CHECK (
+        (target_type = 'link' AND target_link_id IS NOT NULL AND target_node_id IS NULL)
+        OR (target_type = 'node' AND target_node_id IS NOT NULL AND target_link_id IS NULL)
+    )
 );
 
 -- Recovery Actions (combining action_request and action_confirmation)
 CREATE TABLE recovery_actions (
     action_id TEXT PRIMARY KEY,
     schema_version TEXT NOT NULL,
-    target_type TEXT NOT NULL,
-    target_id TEXT NOT NULL,
+    target_type TEXT NOT NULL CHECK (target_type IN ('link', 'node')),
+    target_link_id TEXT,
+    target_node_id TEXT,
     new_path TEXT,
     reason TEXT NOT NULL,
     triggering_probability REAL,
@@ -89,7 +98,13 @@ CREATE TABLE recovery_actions (
     verification_resolved BOOLEAN,
     verification_checked_ts_epoch_ms BIGINT,
     verification_method TEXT,
-    FOREIGN KEY (run_id) REFERENCES experiment_runs(run_id)
+    FOREIGN KEY (target_link_id) REFERENCES topology_links(link_id),
+    FOREIGN KEY (target_node_id) REFERENCES topology_nodes(node_id),
+    FOREIGN KEY (run_id) REFERENCES experiment_runs(run_id),
+    CHECK (
+        (target_type = 'link' AND target_link_id IS NOT NULL AND target_node_id IS NULL)
+        OR (target_type = 'node' AND target_node_id IS NOT NULL AND target_link_id IS NULL)
+    )
 );
 
 -- Indexes for performance on timeseries and foreign keys
@@ -101,6 +116,10 @@ CREATE INDEX idx_node_telemetry_node_id ON node_telemetry(node_id);
 
 CREATE INDEX idx_fault_log_ts ON fault_log(start_ts_epoch_ms);
 CREATE INDEX idx_fault_log_run_id ON fault_log(run_id);
+CREATE INDEX idx_fault_log_target_link ON fault_log(target_link_id);
+CREATE INDEX idx_fault_log_target_node ON fault_log(target_node_id);
 
 CREATE INDEX idx_recovery_actions_ts ON recovery_actions(requested_ts_epoch_ms);
 CREATE INDEX idx_recovery_actions_run_id ON recovery_actions(run_id);
+CREATE INDEX idx_recovery_actions_target_link ON recovery_actions(target_link_id);
+CREATE INDEX idx_recovery_actions_target_node ON recovery_actions(target_node_id);

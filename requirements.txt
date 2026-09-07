@@ -1,6 +1,11 @@
-os-ken
-mininet
-pyyaml
-fastapi
-uvicorn
-jsonschema
+os-ken==2.7.0
+pyyaml==6.0.2
+fastapi==0.141.1
+uvicorn==0.34.0
+jsonschema==4.26.0
+pyroute2==0.8.1
+psutil==7.0.0
+
+# mininet is installed as a system package in the Docker image (Ubuntu apt).
+# Pin locally only if you pip-install it on Linux:
+# mininet==2.3.0

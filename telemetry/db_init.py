@@ -81,7 +81,39 @@ def verify_fk_rejects_bad_link(conn: sqlite3.Connection) -> bool:
                 record_id, ts_epoch_ms, link_id, latency_ms, latency_method,
                 packet_loss_pct, throughput_mbps, utilization_pct,
                 queue_length, active_flows, poll_interval_ms
-            ) VALUES ('bad', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000)
+            ) VALUES ('bad-link', 1, 'L999', 0, 'lldp_probe', 0, 0, 0, 0, 0, 1000)
+            """
+        )
+        conn.commit()
+        return False
+    except sqlite3.IntegrityError:
+        return True
+
+
+def verify_fk_rejects_bad_fault_target(conn: sqlite3.Connection) -> bool:
+    try:
+        conn.execute(
+            """
+            INSERT INTO fault_log (
+                event_id, fault_type, target_type, target_link_id, target_node_id,
+                start_ts_epoch_ms, severity_params, injected_by
+            ) VALUES ('bad-fault', 'link_failure', 'link', 'L999', NULL, 1, '{}', 'test')
+            """
+        )
+        conn.commit()
+        return False
+    except sqlite3.IntegrityError:
+        return True
+
+
+def verify_fk_rejects_bad_recovery_target(conn: sqlite3.Connection) -> bool:
+    try:
+        conn.execute(
+            """
+            INSERT INTO recovery_actions (
+                action_id, schema_version, target_type, target_link_id, target_node_id,
+                reason, requested_ts_epoch_ms
+            ) VALUES ('bad-action', '1.0', 'link', 'L999', NULL, 'manual', 1)
             """
         )
         conn.commit()
@@ -93,8 +125,17 @@ def verify_fk_rejects_bad_link(conn: sqlite3.Connection) -> bool:
 if __name__ == "__main__":
     db = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DB
     conn = init_db(db)
-    ok = verify_fk_rejects_bad_link(conn)
+    results = {
+        "link_telemetry FK": verify_fk_rejects_bad_link(conn),
+        "fault_log FK": verify_fk_rejects_bad_fault_target(conn),
+        "recovery_actions FK": verify_fk_rejects_bad_recovery_target(conn),
+    }
     conn.close()
     print(f"Initialized {db}")
-    print(f"FK constraint rejects unknown link_id: {'PASS' if ok else 'FAIL'}")
-    sys.exit(0 if ok else 1)
+    failed = 0
+    for name, ok in results.items():
+        status = "PASS" if ok else "FAIL"
+        print(f"{name} rejects bogus target: {status}")
+        if not ok:
+            failed += 1
+    sys.exit(1 if failed else 0)

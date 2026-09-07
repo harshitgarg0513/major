@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Fault Injection Event — Day 0 Contract v1.0",
+  "title": "Fault Injection Event — Day 0 Contract v1.1",
   "type": "object",
-  "required": ["event_id", "fault_type", "target_type", "target_id",
-               "start_ts_epoch_ms", "severity_params", "injected_by"],
+  "required": ["event_id", "fault_type", "target_type", "start_ts_epoch_ms", "severity_params", "injected_by"],
   "properties": {
     "event_id": {"type": "string", "format": "uuid"},
     "fault_type": {"type": "string", "enum": ["link_failure", "node_failure", "congestion_burst", "abnormal_traffic"]},
     "target_type": {"type": "string", "enum": ["link", "node"]},
-    "target_id": {"type": "string"},
+    "target_link_id": {"type": ["string", "null"], "pattern": "^L[0-9]+$"},
+    "target_node_id": {"type": ["string", "null"], "pattern": "^[sh][0-9]+$"},
     "start_ts_epoch_ms": {"type": "integer", "minimum": 0},
     "end_ts_epoch_ms": {"type": ["integer", "null"], "minimum": 0},
     "severity_params": {"type": "object"},
@@ -19,6 +19,26 @@
   },
   "additionalProperties": false,
   "allOf": [
+    {
+      "if": {"properties": {"target_type": {"const": "link"}}},
+      "then": {
+        "required": ["target_link_id"],
+        "properties": {
+          "target_link_id": {"type": "string"},
+          "target_node_id": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"target_type": {"const": "node"}}},
+      "then": {
+        "required": ["target_node_id"],
+        "properties": {
+          "target_node_id": {"type": "string"},
+          "target_link_id": {"type": "null"}
+        }
+      }
+    },
     {
       "if": {"properties": {"fault_type": {"const": "congestion_burst"}}},
       "then": {
@@ -46,7 +66,8 @@
     "event_id": "c4a2d3b0-2222-4a2b-9c3d-000000000001",
     "fault_type": "congestion_burst",
     "target_type": "link",
-    "target_id": "L1",
+    "target_link_id": "L1",
+    "target_node_id": null,
     "start_ts_epoch_ms": 1735999200000,
     "end_ts_epoch_ms": 1735999260000,
     "severity_params": {"burst_rate_mbps": 80.0, "duration_s": 60, "competing_flow_count": 3},

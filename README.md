@@ -7,7 +7,8 @@ Predictive self-healing for SDN-controlled IoT networks. This repo collects link
 ```bash
 ./setup_env.sh          # creates venv + installs deps (Mac/local dev)
 source venv/bin/activate
-python telemetry/db_init.py   # creates test.db with topology + schema
+python3 network/topology_builder.py   # sync contracts/topology_registry.yaml
+python telemetry/db_init.py           # creates test.db with topology + schema
 ```
 
 ## Day-0 Manual Test Checklist
@@ -50,7 +51,9 @@ python telemetry/db_init.py
 
 ```
 Initialized .../test.db
-FK constraint rejects unknown link_id: PASS
+link_telemetry FK rejects bogus target: PASS
+fault_log FK rejects bogus target: PASS
+recovery_actions FK rejects bogus target: PASS
 ```
 
 **Manual spot-check:**
@@ -146,7 +149,9 @@ curl -s -X POST http://127.0.0.1:8001/execute_action \
   -d '{
     "schema_version": "1.0",
     "action_id": "d5b3e4c0-3333-4a2b-9c3d-000000000001",
-    "target": {"type": "link", "id": "L1"},
+    "target_type": "link",
+    "target_link_id": "L1",
+    "target_node_id": null,
     "new_path": ["s1", "s3", "s4", "s2"],
     "reason": "predictive",
     "triggering_probability": 0.83,
@@ -159,7 +164,7 @@ curl -s -X POST http://127.0.0.1:8001/execute_action \
 
 ---
 
-### 8.2b / 8.2c — OS-Ken telemetry + latency probe (requires Linux + Docker)
+### 8.2b / 8.2c — Unified telemetry collector (requires Linux + Docker)
 
 Mininet/OVS cannot run natively on macOS. Use Docker:
 
@@ -168,42 +173,76 @@ docker-compose up -d --build
 docker exec -it sdn_iot_env bash
 ```
 
-**Inside the container — Terminal A (init DB + controller):**
+**Inside the container — Terminal A (registry + DB + single collector app):**
 
 ```bash
 cd /app
+python3 network/topology_builder.py   # sync contracts/topology_registry.yaml from Mininet topo
 python3 telemetry/db_init.py
-os-ken-manager telemetry/telemetry_poller.py telemetry/latency_probe.py
+os-ken-manager telemetry/telemetry_collector.py
 ```
+
+Use **one** collector app — do not run `telemetry_poller.py` and `latency_probe.py` separately (deprecated; they caused split half-rows).
 
 **Inside the container — Terminal B (Mininet):**
 
 ```bash
 cd /app
-mn --custom telemetry/mininet_test_topo.py --topo mytopo \
+mn --custom network/mininet_test_topo.py --topo mytopo \
   --controller remote,ip=127.0.0.1,port=6653 --link tc
 ```
 
-At the Mininet CLI, start a 10 Mbps stream:
+At the Mininet CLI, start traffic and optional host telemetry:
 
 ```
 mininet> h1 iperf3 -s -D
 mininet> h2 iperf3 -c h1 -b 10M -t 120
+mininet> h1 python3 telemetry/node_collector.py --node-id h1 --once
 ```
 
-Wait ~30 seconds (first poll is skipped for delta math), then in **Terminal C**:
+Wait ~30 seconds (first poll skipped for counter deltas), then query:
 
 ```bash
-docker exec -it sdn_iot_env bash
 sqlite3 /app/test.db "
-  SELECT ts_epoch_ms, link_id, throughput_mbps, utilization_pct, latency_ms, latency_method
+  SELECT ts_epoch_ms, link_id, throughput_mbps, utilization_pct,
+         latency_ms, latency_method, queue_length, packet_loss_pct
   FROM link_telemetry ORDER BY ts_epoch_ms DESC LIMIT 10;
 "
 ```
 
-**Expect for 8.2b (throughput):** `throughput_mbps` on `L1` roughly 8–12 Mbps (±20% of 10 Mbps iperf target).
+**Expect (8.2b throughput):** one row per timestamp with **both** real `throughput_mbps` (~8–12 Mbps) **and** real `latency_ms` (~10 ms) — not separate half-rows.
 
-**Expect for 8.2c (latency):** rows with `latency_method = 'lldp_probe'` and `latency_ms` near **10 ms** (link has `delay='10ms'` in `mininet_test_topo.py`). Values near 0 ms usually mean the probe is measuring controller↔switch delay, not link delay.
+**Expect (8.2c latency):** `latency_method = 'lldp_probe'` (or `configured_static` before first probe returns).
+
+**Verify no split-write corruption:**
+
+```bash
+sqlite3 /app/test.db "
+  SELECT COUNT(*) FROM link_telemetry
+  WHERE latency_ms = 0.0 OR throughput_mbps = 0.0;
+"
+```
+
+Should be **0** (or near-zero only during the very first cold-start second), not ~50% of rows.
+
+**Verify queue_length (saturation test):**
+
+```bash
+# In Mininet CLI — flood past max_queue_size=100 on L1:
+mininet> h2 iperf3 -c h1 -b 200M -t 30
+```
+
+Then confirm `queue_length > 0` on L1 rows during saturation.
+
+**Polymorphic FK test (fault log):**
+
+```bash
+sqlite3 /app/test.db "PRAGMA foreign_keys=ON;
+  INSERT INTO fault_log (event_id, fault_type, target_type, target_link_id, target_node_id,
+    start_ts_epoch_ms, severity_params, injected_by)
+  VALUES ('x', 'link_failure', 'link', 'L999', NULL, 1, '{}', 'test');"
+# Expect: Error: FOREIGN KEY constraint failed
+```
 
 ---
 
@@ -225,11 +264,20 @@ All machine-readable Day-0 contracts live in [`contracts/`](./contracts/):
 ## Repo layout
 
 ```
-network/     Mininet/OVS/controller, fault injection, action-executor
-telemetry/   Collector, DB init, dataset builder
+network/     Mininet/OVS topology, topology_builder.py (generates contracts/topology_registry.yaml)
+telemetry/   Unified collector, DB init, node_collector.py (psutil, run inside Mininet hosts)
 ml/          Feature engineering, training, prediction service
 recovery/    Path computation, threshold policy, decision engine
-contracts/   Shared schemas (team agreement only)
+contracts/   Shared schemas (team agreement only; topology_registry.yaml is generated)
 docs/        Personal logs (see docs/personal_log_template.md)
 milestones/  Phase-end integration artifacts
+```
+
+### Regenerating topology registry
+
+Whenever `network/mininet_test_topo.py` changes:
+
+```bash
+python3 network/topology_builder.py
+python telemetry/db_init.py   # re-seed DB after registry change
 ```

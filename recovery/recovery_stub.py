@@ -36,8 +36,14 @@ async def execute_action(request: Request):
 
     # Log the incoming valid request
     action_id = body["action_id"]
-    logger.info(f"Received action request for action_id: {action_id}")
-    logger.info(f"Target: {body['target']} | Reason: {body['reason']}")
+    logger.info("Received action request for action_id: %s", action_id)
+    logger.info(
+        "Target type=%s link=%s node=%s | Reason: %s",
+        body["target_type"],
+        body.get("target_link_id"),
+        body.get("target_node_id"),
+        body["reason"],
+    )
 
     # 2. Sleep 200ms (simulating flow-rule install latency)
     await asyncio.sleep(0.2)

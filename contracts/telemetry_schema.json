@@ -13,7 +13,7 @@
         "link_id": {"type": "string", "pattern": "^L[0-9]+$"},
         "latency_ms": {"type": "number", "minimum": 0},
         "latency_method": {"type": "string", "enum": ["lldp_probe", "configured_static"]},
-        "packet_loss_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Derived from of_stats counter deltas, not active probe loss."},
+        "packet_loss_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "Link-level forwarding mismatch: tx on one endpoint vs rx on peer (of_stats counter deltas). Not active ping/iperf loss."},
         "throughput_mbps": {"type": "number", "minimum": 0, "description": "Derived from of_stats byte-counter delta."},
         "utilization_pct": {"type": "number", "minimum": 0, "maximum": 100},
         "queue_length": {"type": "integer", "minimum": 0, "description": "Via tc/netem backlog (pyroute2), not OVS/OpenFlow."},

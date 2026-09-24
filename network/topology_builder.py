@@ -11,7 +11,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from network.mininet_test_topo import L1_BW_MBPS, L1_DELAY, MyTopo  # noqa: E402
+from network.mininet_test_topo import MyTopo  # noqa: E402
 
 OUTPUT = PROJECT_ROOT / "contracts" / "topology_registry.yaml"
 GENERATOR = "network/topology_builder.py"
@@ -44,8 +44,8 @@ def main() -> None:
         port1 = info.get("port1", 1)
         port2 = info.get("port2", 1)
         params = info.get("opts", {}) or {}
-        bw = params.get("bw", L1_BW_MBPS)
-        delay = params.get("delay", L1_DELAY)
+        bw = params.get("bw", 100)
+        delay = params.get("delay", "10ms")
 
         link: dict = {
             "link_id": f"L{link_index}",

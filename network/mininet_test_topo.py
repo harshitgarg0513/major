@@ -5,36 +5,51 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel
 from mininet.link import TCLink
 
-# Inter-switch link capacity must match contracts/topology_registry.yaml capacity_mbps.
-L1_BW_MBPS = 100
-L1_DELAY = "10ms"
-L1_MAX_QUEUE = 100  # packets — saturate with iperf to verify queue_length > 0
-
-
 class MyTopo(Topo):
     def build(self):
-        s1 = self.addSwitch("s1", protocols="OpenFlow13")
-        s2 = self.addSwitch("s2", protocols="OpenFlow13")
-        h1 = self.addHost("h1")
-        h2 = self.addHost("h2")
+        s_core = self.addSwitch("s1", protocols="OpenFlow13")
+        s_edge1 = self.addSwitch("s2", protocols="OpenFlow13")
+        s_edge2 = self.addSwitch("s3", protocols="OpenFlow13")
 
-        # L1: s1:1 <-> s2:1 (registry-backed link_id L1)
+        h_sensor1 = self.addHost("h_sensor1")
+        h_camera1 = self.addHost("h_camera1")
+        h_sensor2 = self.addHost("h_sensor2")
+        h_server = self.addHost("h_server")
+
+        # L1: Core <-> Edge1
         self.addLink(
-            s1,
-            s2,
+            s_core,
+            s_edge1,
             port1=1,
             port2=1,
             cls=TCLink,
-            bw=L1_BW_MBPS,
-            delay=L1_DELAY,
-            max_queue_size=L1_MAX_QUEUE,
+            bw=1000,
+            delay="5ms",
+            max_queue_size=100,
         )
 
-        self.addLink(h1, s1, port1=1, port2=2)
-        self.addLink(h2, s2, port1=1, port2=2)
+        # L2: Core <-> Edge2
+        self.addLink(
+            s_core,
+            s_edge2,
+            port1=2,
+            port2=1,
+            cls=TCLink,
+            bw=1000,
+            delay="5ms",
+            max_queue_size=100,
+        )
+
+        # Connect hosts to Edge1
+        self.addLink(h_sensor1, s_edge1, port1=1, port2=2, cls=TCLink, bw=10, delay="2ms")
+        self.addLink(h_camera1, s_edge1, port1=1, port2=3, cls=TCLink, bw=100, delay="2ms")
+
+        # Connect hosts to Edge2
+        self.addLink(h_sensor2, s_edge2, port1=1, port2=2, cls=TCLink, bw=10, delay="2ms")
+        self.addLink(h_server, s_edge2, port1=1, port2=3, cls=TCLink, bw=1000, delay="1ms")
 
 
-topos = {"mytopo": (MyTopo, {})}
+topos = {"mytopo": MyTopo}
 
 
 if __name__ == "__main__":
@@ -48,6 +63,6 @@ if __name__ == "__main__":
     net.start()
     print("Mininet topology started.")
     print("Generate registry: python3 network/topology_builder.py")
-    print("Example traffic: h1 iperf3 -s -D && h2 iperf3 -c h1 -b 10M -t 120")
+    print("Example traffic: h_server iperf3 -s -D && h_camera1 iperf3 -c h_server -b 10M -t 120")
     CLI(net)
     net.stop()

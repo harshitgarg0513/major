@@ -8,6 +8,8 @@ psutil==7.0.0
 scikit-learn==1.6.1
 xgboost==2.1.4
 networkx==3.4.2
+pandas==2.2.3
+numpy==1.26.4
 
 # mininet is installed as a system package in the Docker image (Ubuntu apt).
 # Pin locally only if you pip-install it on Linux:

@@ -12,9 +12,3 @@ echo "Installing requirements..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-echo ""
-echo "================================================================"
-echo "Done! To fix your IDE errors:"
-echo "1. Select the Python interpreter inside the 'venv' folder in VSCode/PyCharm."
-echo "2. Run 'source venv/bin/activate' before running any local tests."
-echo "================================================================"

@@ -195,7 +195,7 @@ docker exec -it sdn_iot_env bash
 cd /app
 python3 network/topology_builder.py   # sync contracts/topology_registry.yaml from Mininet topo
 python3 telemetry/db_init.py
-os-ken-manager telemetry/telemetry_collector.py
+osken-manager telemetry/telemetry_collector.py
 ```
 
 Use **one** collector app — do not run `telemetry_poller.py` and `latency_probe.py` separately (deprecated; they caused split half-rows).

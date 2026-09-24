@@ -40,11 +40,18 @@ async def predict(request: Request):
     now_ms = int(time.time() * 1000)
 
     # 3. Build response matching the response schema exactly
+    # For Phase 2 demo, if any telemetry reading has queue > 0 or loss > 0, set prob to 0.85
+    prob = 0.0
+    for t in telemetry_window:
+        if t.get("queue_length", 0) > 0 or t.get("packet_loss_pct", 0) > 0:
+            prob = 0.85
+            break
+
     response_body = {
         "schema_version": body.get("schema_version", "1.0"),
         "target_type": body["target_type"],
         "target_id": body["target_id"],
-        "failure_probability": 0.0,
+        "failure_probability": prob,
         "horizon_seconds": body["horizon_seconds"],
         "model_version": "stub_v0",
         "inference_ts_epoch_ms": now_ms,

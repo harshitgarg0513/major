@@ -24,7 +24,7 @@ WORKDIR /app
 
 # Install Python requirements
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 # Start OpenvSwitch in the background by default (needed for Mininet)
 # and keep the container running

@@ -15,7 +15,14 @@ EXPERIMENT_PATH = PROJECT_ROOT / "contracts" / "experiment_runs.yaml"
 DEFAULT_DB = PROJECT_ROOT / "test.db"
 
 
+import os
+
 def init_db(db_path: Path = DEFAULT_DB) -> sqlite3.Connection:
+    topo_py = PROJECT_ROOT / "network" / "mininet_test_topo.py"
+    if topo_py.exists() and TOPOLOGY_PATH.exists():
+        if os.path.getmtime(topo_py) > os.path.getmtime(TOPOLOGY_PATH):
+            raise RuntimeError(f"topology_registry.yaml is stale! {topo_py.name} has been modified more recently. Please run `python3 network/topology_builder.py` first.")
+
     if db_path.exists():
         db_path.unlink()
 

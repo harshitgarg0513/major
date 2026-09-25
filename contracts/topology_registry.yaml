@@ -8,12 +8,20 @@ nodes:
   kind: switch
 - node_id: s2
   kind: switch
-- node_id: h1
+- node_id: s3
+  kind: switch
+- node_id: h_camera1
+  kind: host
+  role: iot_camera
+- node_id: h_sensor1
   kind: host
   role: iot_sensor
-- node_id: h2
+- node_id: h_sensor2
   kind: host
   role: iot_sensor
+- node_id: h_server
+  kind: host
+  role: edge_gateway
 links:
 - link_id: L1
   endpoint_a:
@@ -26,4 +34,16 @@ links:
   mininet_ifaces:
   - s1-eth1
   - s2-eth1
+  configured_delay_ms: 10.0
+- link_id: L2
+  endpoint_a:
+    node_id: s1
+    port: 2
+  endpoint_b:
+    node_id: s3
+    port: 1
+  capacity_mbps: 100
+  mininet_ifaces:
+  - s1-eth2
+  - s3-eth1
   configured_delay_ms: 10.0

@@ -43,7 +43,7 @@
       "properties": {
         "record_id": {"type": "string", "format": "uuid"},
         "ts_epoch_ms": {"type": "integer", "minimum": 0},
-        "node_id": {"type": "string", "pattern": "^[sh][0-9]+$"},
+        "node_id": {"type": "string", "pattern": "^[sh].*$"},
         "cpu_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Always null for kind:switch (shared ovs-vswitchd). For kind:host, meaning depends on measurement_scope — vm_shared means whole VM/container, not per-Mininet-host."},
         "ram_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Same scope rules as cpu_pct."},
         "active_flows": {"type": "integer", "minimum": 0, "description": "Via of_stats; always 0 for hosts."},

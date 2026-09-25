@@ -34,7 +34,12 @@ def main() -> None:
     for sid in switch_ids:
         nodes.append({"node_id": sid, "kind": "switch"})
     for hid in host_ids:
-        nodes.append({"node_id": hid, "kind": "host", "role": "iot_sensor"})
+        role = "iot_sensor"
+        if hid.startswith("h_camera"):
+            role = "iot_camera"
+        elif hid.startswith("h_server"):
+            role = "edge_gateway"
+        nodes.append({"node_id": hid, "kind": "host", "role": role})
 
     link_index = 1
     for node1, node2, info in topo.links(withInfo=True):

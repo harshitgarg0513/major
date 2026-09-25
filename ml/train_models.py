@@ -36,15 +36,22 @@ def train_and_evaluate():
     X_test_scaled = scaler.transform(X_test)
     
     models = {
-        "Logistic Regression": LogisticRegression(),
-        "Random Forest": RandomForestClassifier(random_state=42)
+        "Logistic Regression": LogisticRegression(class_weight='balanced'),
+        "Random Forest": RandomForestClassifier(random_state=42, class_weight='balanced')
     }
     if XGBClassifier is not None:
-        models["XGBoost"] = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+        models["XGBoost"] = XGBClassifier(eval_metric='logloss', random_state=42, scale_pos_weight=10) # rough proxy for balanced
         
     print("=== Model Evaluation ===")
+    print("WARNING: This data is trivially separable and meant for pipeline plumbing validation only.")
+    print("Do not quote these accuracy numbers as predictive performance metrics.\n")
+    
     for name, model in models.items():
         print(f"--- {name} ---")
+        # Compute cross-validation score
+        cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='accuracy')
+        print(f"CV Accuracy (5-fold): {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+        
         model.fit(X_train_scaled, y_train)
         y_pred = model.predict(X_test_scaled)
         
@@ -60,11 +67,11 @@ def train_and_evaluate():
         except AttributeError:
             roc_auc = float('nan')
             
-        print(f"Accuracy:  {acc:.4f}")
-        print(f"Precision: {prec:.4f}")
-        print(f"Recall:    {rec:.4f}  <-- Most important")
-        print(f"F1-Score:  {f1:.4f}")
-        print(f"ROC-AUC:   {roc_auc:.4f}\n")
+        print(f"Test Accuracy:  {acc:.4f}")
+        print(f"Test Precision: {prec:.4f}")
+        print(f"Test Recall:    {rec:.4f}  <-- Most important")
+        print(f"Test F1-Score:  {f1:.4f}")
+        print(f"Test ROC-AUC:   {roc_auc:.4f}\n")
 
 if __name__ == "__main__":
     train_and_evaluate()

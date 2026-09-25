@@ -21,56 +21,60 @@ DB_PATH = "test.db"
 PREDICT_URL = "http://127.0.0.1:8000/predict"
 RECOVERY_URL = "http://127.0.0.1:8001/execute_action"
 
-def get_latest_telemetry(cursor):
-    """Fetch the latest telemetry window for all links."""
-    # To keep it simple, just grab the most recent row for each link_id
+def get_telemetry_windows(cursor, window_seconds=30):
+    """Fetch the trailing window of telemetry for all links."""
     cursor.execute("""
         SELECT link_id, ts_epoch_ms, latency_ms, packet_loss_pct, throughput_mbps, utilization_pct, queue_length, active_flows
         FROM link_telemetry
-        WHERE (link_id, ts_epoch_ms) IN (
-            SELECT link_id, MAX(ts_epoch_ms)
-            FROM link_telemetry
-            GROUP BY link_id
-        )
-    """)
-    return cursor.fetchall()
+        WHERE ts_epoch_ms >= (
+            SELECT MAX(ts_epoch_ms) FROM link_telemetry
+        ) - (? * 1000)
+        ORDER BY link_id, ts_epoch_ms ASC
+    """, (window_seconds,))
+    
+    windows = {}
+    for row in cursor.fetchall():
+        link_id = row[0]
+        if link_id not in windows:
+            windows[link_id] = []
+        windows[link_id].append({
+            "ts_epoch_ms": row[1],
+            "latency_ms": row[2],
+            "packet_loss_pct": row[3],
+            "throughput_mbps": row[4],
+            "utilization_pct": row[5],
+            "queue_length": row[6],
+            "active_flows": row[7]
+        })
+    return windows
 
 def run_integration_loop():
-    if not os.path.exists(DB_PATH):
-        print(f"Waiting for database {DB_PATH} to be created...")
-        return
-        
     print("=== Phase 2 Integration Engine Started ===")
     
     while True:
+        if not os.path.exists(DB_PATH):
+            print(f"Waiting for database {DB_PATH} to be created...")
+            time.sleep(2)
+            continue
+
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            latest_rows = get_latest_telemetry(cursor)
-            if not latest_rows:
+            windows = get_telemetry_windows(cursor, window_seconds=30)
+            if not windows:
                 print("No telemetry data found. Waiting...")
                 time.sleep(2)
                 continue
                 
-            for row in latest_rows:
-                link_id, ts, lat, ploss, tput, util, qlen, flows = row
-                
+            for link_id, window in windows.items():
                 # 1. Build Prediction Request
                 pred_req = {
                     "schema_version": "1.0",
                     "target_type": "link",
                     "target_id": link_id,
                     "window_seconds": 30,
-                    "telemetry_window": [{
-                        "ts_epoch_ms": ts,
-                        "latency_ms": lat,
-                        "packet_loss_pct": ploss,
-                        "throughput_mbps": tput,
-                        "utilization_pct": util,
-                        "queue_length": qlen,
-                        "active_flows": flows
-                    }],
+                    "telemetry_window": window,
                     "horizon_seconds": 5
                 }
                 
@@ -94,9 +98,9 @@ def run_integration_loop():
                 # 4. Trigger Recovery if needed
                 if action in ["prepare_backup", "reroute"]:
                     # Compute a real path using the CSPF path algorithm
-                    from recovery.path_algorithms import build_sample_graph, cspf_path
-                    graph = build_sample_graph()
-                    path, cost = cspf_path(graph, "h1", "h2")
+                    from recovery.path_algorithms import build_registry_graph, cspf_path
+                    graph = build_registry_graph()
+                    path, cost = cspf_path(graph, "h_sensor1", "h_server")
                     if not path:
                         path = ["s1", "s2"] # Fallback
 

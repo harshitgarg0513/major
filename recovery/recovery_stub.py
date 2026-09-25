@@ -3,6 +3,7 @@ import time
 import os
 import asyncio
 import logging
+import sqlite3
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 import jsonschema
@@ -62,6 +63,30 @@ async def execute_action(request: Request):
             "method": "telemetry_recheck"
         }
     }
+
+    # Persist to database
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), '../test.db')
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO recovery_actions (
+                    action_id, schema_version, target_type, target_link_id, target_node_id,
+                    reason, requested_ts_epoch_ms
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    action_id,
+                    body.get("schema_version", "1.0"),
+                    body["target_type"],
+                    body.get("target_link_id"),
+                    body.get("target_node_id"),
+                    body["reason"],
+                    body.get("requested_ts_epoch_ms", now_ms)
+                )
+            )
+    except Exception as e:
+        logger.error(f"Failed to persist recovery action: {e}")
 
     # 4. Validate outgoing confirmation against the JSON Schema before sending
     try:

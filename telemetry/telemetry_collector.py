@@ -68,6 +68,7 @@ class LinkTelemetryCollector(app_manager.OSKenApp):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.datapaths: dict[int, Any] = {}
+        self.mac_to_port: dict[int, dict[str, int]] = {}
 
         with open(os.path.join(CONTRACTS_DIR, "topology_registry.yaml"), encoding="utf-8") as f:
             self.topology = yaml.safe_load(f)
@@ -261,22 +262,72 @@ class LinkTelemetryCollector(app_manager.OSKenApp):
             )
         )
 
+    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = parser.OFPFlowMod(
+            datapath=datapath,
+            buffer_id=buffer_id if buffer_id else ofproto.OFP_NO_BUFFER,
+            priority=priority,
+            match=match,
+            instructions=inst,
+        )
+        datapath.send_msg(mod)
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev: Any) -> None:
-        pkt = packet.Packet(ev.msg.data)
+        msg = ev.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        in_port = msg.match["in_port"]
+
+        pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        if not eth or eth.ethertype != PROBE_ETHERTYPE:
+        if not eth:
             return
 
-        raw = pkt.protocols[-1]
-        if not isinstance(raw, (bytes, bytearray)) or len(raw) < 24:
+        if eth.ethertype == PROBE_ETHERTYPE:
+            raw = pkt.protocols[-1]
+            if not isinstance(raw, (bytes, bytearray)) or len(raw) < 24:
+                return
+
+            send_time, link_id_bytes = struct.unpack("!d16s", raw[:24])
+            link_id = link_id_bytes.rstrip(b"\x00").decode("utf-8")
+            latency_ms = ((time.time() - send_time) * 1000.0) / 2.0
+            self.cycle_latency[link_id] = (latency_ms, "lldp_probe")
+            self.last_latency[link_id] = (latency_ms, "lldp_probe")
             return
 
-        send_time, link_id_bytes = struct.unpack("!d16s", raw[:24])
-        link_id = link_id_bytes.rstrip(b"\x00").decode("utf-8")
-        latency_ms = ((time.time() - send_time) * 1000.0) / 2.0
-        self.cycle_latency[link_id] = (latency_ms, "lldp_probe")
-        self.last_latency[link_id] = (latency_ms, "lldp_probe")
+        # L2 forwarding for normal traffic
+        dst = eth.dst
+        src = eth.src
+        dpid = datapath.id
+
+        self.mac_to_port.setdefault(dpid, {})
+        if dst == "ff:ff:ff:ff:ff:ff":
+            out_port = ofproto.OFPP_FLOOD
+        else:
+            self.mac_to_port[dpid][src] = in_port
+            out_port = self.mac_to_port[dpid].get(dst, ofproto.OFPP_FLOOD)
+
+        actions = [parser.OFPActionOutput(out_port)]
+        if out_port != ofproto.OFPP_FLOOD:
+            match = parser.OFPMatch(in_port=in_port, eth_dst=dst, eth_src=src)
+            if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+                self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+                return
+            self.add_flow(datapath, 1, match, actions)
+
+        out = parser.OFPPacketOut(
+            datapath=datapath,
+            buffer_id=msg.buffer_id,
+            in_port=in_port,
+            actions=actions,
+            data=msg.data if msg.buffer_id == ofproto.OFP_NO_BUFFER else None,
+        )
+        datapath.send_msg(out)
 
     def _resolve_latency(self, link_id: str) -> tuple[float, str] | None:
         if link_id in self.cycle_latency:

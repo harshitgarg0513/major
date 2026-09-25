@@ -30,13 +30,17 @@ def print_dashboard():
             print("Database exists, waiting for telemetry data...")
             return True
             
-        # Get all records for that timestamp
+        # Get all records for that timestamp (latest for each link)
         cursor.execute("""
             SELECT link_id, throughput_mbps, latency_ms, packet_loss_pct, queue_length, utilization_pct, active_flows
             FROM link_telemetry 
-            WHERE ts_epoch_ms = ?
+            WHERE (link_id, ts_epoch_ms) IN (
+                SELECT link_id, MAX(ts_epoch_ms)
+                FROM link_telemetry
+                GROUP BY link_id
+            )
             ORDER BY link_id
-        """, (latest_ts,))
+        """)
         
         rows = cursor.fetchall()
         

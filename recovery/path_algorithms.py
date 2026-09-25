@@ -6,7 +6,23 @@ Phase 2 — Path Computation with Constraints (CSPF)
 from __future__ import annotations
 
 import sys
+import os
+import yaml
 import networkx as nx
+
+def build_registry_graph() -> nx.DiGraph:
+    g = nx.DiGraph()
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'contracts', 'topology_registry.yaml')
+    with open(config_path, 'r') as f:
+        topo = yaml.safe_load(f)
+    for link in topo.get('links', []):
+        u = link['endpoint_a']['node_id']
+        v = link['endpoint_b']['node_id']
+        cap = link.get('capacity_mbps', 0)
+        dly = link.get('configured_delay_ms', 0.0)
+        g.add_edge(u, v, weight=1, capacity=cap, delay=dly)
+        g.add_edge(v, u, weight=1, capacity=cap, delay=dly)
+    return g
 
 def build_sample_graph() -> nx.DiGraph:
     g = nx.DiGraph()

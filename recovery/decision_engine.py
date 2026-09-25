@@ -5,7 +5,9 @@ Phase 2 — Confidence-Threshold Policy Skeleton
 
 import yaml
 import os
+import functools
 
+@functools.lru_cache(maxsize=1)
 def load_thresholds():
     config_path = os.path.join(os.path.dirname(__file__), '..', 'contracts', 'threshold_config.yaml')
     with open(config_path, 'r') as f:

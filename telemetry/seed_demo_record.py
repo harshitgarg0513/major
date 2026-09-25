@@ -38,7 +38,7 @@ LINK_RECORD = {
 NODE_RECORD = {
     "record_id": str(uuid.uuid4()),
     "ts_epoch_ms": 1735999201000,
-    "node_id": "h1",
+    "node_id": "h_sensor1",
     "cpu_pct": 8.5,
     "ram_pct": 41.2,
     "active_flows": 0,
@@ -94,12 +94,14 @@ def insert_node(conn: sqlite3.Connection, rec: dict) -> None:
     )
 
 
-def read_back(conn: sqlite3.Connection) -> tuple[list, list]:
+def read_back(conn: sqlite3.Connection, link_record_id: str, node_record_id: str) -> tuple[list, list]:
     links = conn.execute(
-        "SELECT link_id, throughput_mbps, latency_ms, is_partial FROM link_telemetry"
+        "SELECT link_id, throughput_mbps, latency_ms, is_partial FROM link_telemetry WHERE record_id = ?",
+        (link_record_id,)
     ).fetchall()
     nodes = conn.execute(
-        "SELECT node_id, cpu_pct, measurement_scope FROM node_telemetry"
+        "SELECT node_id, cpu_pct, measurement_scope FROM node_telemetry WHERE record_id = ?",
+        (node_record_id,)
     ).fetchall()
     return links, nodes
 
@@ -119,7 +121,7 @@ def main() -> int:
     insert_node(conn, NODE_RECORD)
     conn.commit()
 
-    links, nodes = read_back(conn)
+    links, nodes = read_back(conn, LINK_RECORD["record_id"], NODE_RECORD["record_id"])
     conn.close()
 
     print("Read back link_telemetry:", links)

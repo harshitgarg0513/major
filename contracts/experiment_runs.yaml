@@ -9,3 +9,10 @@ runs:
     start_ts_epoch_ms: 1735999200000
     end_ts_epoch_ms: 1735999260000
     notes: null
+  - run_id: "run_phase2"
+    condition: "predictive"
+    scenario: "pipeline_test"
+    repetition_index: 1
+    start_ts_epoch_ms: 1735999200000
+    end_ts_epoch_ms: 1735999260000
+    notes: "dummy run id for phase 2 orchestration"

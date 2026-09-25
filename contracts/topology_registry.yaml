@@ -30,11 +30,11 @@ links:
   endpoint_b:
     node_id: s2
     port: 1
-  capacity_mbps: 100
+  capacity_mbps: 1000
   mininet_ifaces:
   - s1-eth1
   - s2-eth1
-  configured_delay_ms: 10.0
+  configured_delay_ms: 5.0
 - link_id: L2
   endpoint_a:
     node_id: s1
@@ -42,8 +42,8 @@ links:
   endpoint_b:
     node_id: s3
     port: 1
-  capacity_mbps: 100
+  capacity_mbps: 1000
   mininet_ifaces:
   - s1-eth2
   - s3-eth1
-  configured_delay_ms: 10.0
+  configured_delay_ms: 5.0

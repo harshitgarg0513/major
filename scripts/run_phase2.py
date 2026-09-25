@@ -99,10 +99,28 @@ def run_integration_loop():
                 if action in ["prepare_backup", "reroute"]:
                     # Compute a real path using the CSPF path algorithm
                     from recovery.path_algorithms import build_registry_graph, cspf_path
+                    import yaml
+                    import networkx as nx
+                    
                     graph = build_registry_graph()
-                    path, cost = cspf_path(graph, "h_sensor1", "h_server")
-                    if not path:
-                        path = ["s1", "s2"] # Fallback
+                    endpoint_a, endpoint_b = "s1", "s2"
+                    try:
+                        with open("contracts/topology_registry.yaml") as f:
+                            topo = yaml.safe_load(f)
+                        for l in topo.get("links", []):
+                            if l["link_id"] == link_id:
+                                endpoint_a = l["endpoint_a"]["node_id"]
+                                endpoint_b = l["endpoint_b"]["node_id"]
+                                break
+                    except Exception:
+                        pass
+                        
+                    try:
+                        path, cost = cspf_path(graph, endpoint_a, endpoint_b)
+                        if not path:
+                            path = ["s1", "s2"] # Fallback
+                    except (nx.NodeNotFound, nx.NetworkXNoPath):
+                        path = ["s1", "s2"]
 
                     action_req = {
                         "schema_version": "1.0",

@@ -48,7 +48,7 @@ def main() -> None:
 
         port1 = info.get("port1", 1)
         port2 = info.get("port2", 1)
-        params = info.get("opts", {}) or {}
+        params = info
         bw = params.get("bw", 100)
         delay = params.get("delay", "10ms")
 

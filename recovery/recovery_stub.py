@@ -72,8 +72,10 @@ async def execute_action(request: Request):
                 """
                 INSERT INTO recovery_actions (
                     action_id, schema_version, target_type, target_link_id, target_node_id,
-                    reason, requested_ts_epoch_ms
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    new_path, reason, triggering_probability, run_id, requested_ts_epoch_ms,
+                    status, applied_ts_epoch_ms, verification_resolved,
+                    verification_checked_ts_epoch_ms, verification_method
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     action_id,
@@ -81,8 +83,16 @@ async def execute_action(request: Request):
                     body["target_type"],
                     body.get("target_link_id"),
                     body.get("target_node_id"),
+                    json.dumps(body.get("new_path")) if body.get("new_path") else None,
                     body["reason"],
-                    body.get("requested_ts_epoch_ms", now_ms)
+                    body.get("triggering_probability"),
+                    body.get("run_id"),
+                    body.get("requested_ts_epoch_ms", now_ms),
+                    response_body["status"],
+                    response_body["applied_ts_epoch_ms"],
+                    response_body["verification"]["resolved"],
+                    response_body["verification"]["checked_ts_epoch_ms"],
+                    response_body["verification"]["method"]
                 )
             )
     except Exception as e:

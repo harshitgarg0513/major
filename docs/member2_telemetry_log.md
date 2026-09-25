@@ -21,3 +21,16 @@
   - Fabricated link + node rows validate against JSON Schema and persist in SQLite
 - What didn't go as planned:
   - Built real collector ahead of schedule; saturation verification still pending
+
+## 2026-09-25 — Phase 2 close-out
+- What I built this session:
+  - Merged L2 forwarding into `telemetry_collector.py` so we don't have to launch two OS-Ken apps simultaneously. This resolves the split-write database bugs and guarantees LLDP probes don't clash with normal IoT traffic flow-mods.
+  - Added a staleness assertion in `db_init.py` so the database won't initialize if `topology_registry.yaml` is out of date compared to the Mininet topology definition.
+  - Made `seed_demo_record.py` fully idempotent by returning exactly the `record_id` it just inserted in `read_back`.
+  - Fixed `live_dashboard.py` to use a robust SQL `GROUP BY link_id` query ensuring it pulls the latest timestamps appropriately for each link.
+- Decisions made and why:
+  - We decided to ignore SQLite cache files (`*.db-shm` and `*.db-wal`) via `.gitignore` to avoid repository clutter during active orchestration.
+- What's blocking me:
+  - Nothing, telemetry collection and DB population is fully functional.
+- Tests run and results:
+  - Phase 1 local tests `verify_phase1.sh` now pass safely regardless of how many times they are executed sequentially.

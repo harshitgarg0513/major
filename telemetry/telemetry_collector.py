@@ -53,9 +53,18 @@ def read_queue_length(ifnames: list[str]) -> int:
                 if not idx_list:
                     continue
                 idx = idx_list[0]
-                for qdisc in ip.getqdiscs(idx):
-                    stats = qdisc.get("stats") or qdisc.get("stats64") or {}
-                    qlen = stats.get("qlen", 0) or stats.get("backlog", 0)
+                for qdisc in ip.get_qdiscs(index=idx):
+                    qlen = 0
+                    tca_stats = qdisc.get_attr('TCA_STATS')
+                    if tca_stats and isinstance(tca_stats, dict):
+                        qlen = tca_stats.get('qlen', 0) or tca_stats.get('backlog', 0)
+                    else:
+                        tca_stats2 = qdisc.get_attr('TCA_STATS2')
+                        if tca_stats2 and hasattr(tca_stats2, 'get_attr'):
+                            queue_stats = tca_stats2.get_attr('TCA_STATS_QUEUE')
+                            if queue_stats and isinstance(queue_stats, dict):
+                                qlen = queue_stats.get('qlen', 0) or queue_stats.get('backlog', 0)
+                    
                     max_qlen = max(max_qlen, int(qlen))
     except OSError:
         return 0

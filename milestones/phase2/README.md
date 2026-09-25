@@ -17,7 +17,10 @@ Phase 2 focused on wiring the individual stubs from Phase 1 into a complete, con
 
 ## Verification
 - Running `python3 network/topology_builder.py` sets up the graph correctly.
-- `python3 telemetry/db_init.py` loads `contracts/experiment_runs.yaml` (which now has `run_phase2`) and creates foreign-key safe schemas.
-- `python3 scripts/run_phase2.py` loops stably without crashing, even if we inject a predictive failure (simulated via prediction stub returning > threshold). 
+- `python3 telemetry/db_init.py` loads `contracts/experiment_runs.yaml` and creates foreign-key safe schemas.
+- The `osken-manager` controller and Mininet successfully run concurrently inside Docker.
+- Real `iperf` traffic was injected to spike link usage dynamically.
+- `live_dashboard.py` displays real-time `pyroute2` metrics extracted from OVS bridges.
+- `python3 scripts/run_phase2.py` loops stably without crashing, detects the real OpenFlow traffic spikes, and automatically triggers the ML reroute sequence!
 
 **Status**: Phase 2 fully completed and closed.

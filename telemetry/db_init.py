@@ -129,6 +129,23 @@ def verify_fk_rejects_bad_recovery_target(conn: sqlite3.Connection) -> bool:
         return True
 
 
+def verify_unmanaged_connection_fk_rejects(db_path: Path) -> bool:
+    try:
+        # Simulate recovery_stub.py's actual connection pattern
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute(
+                """
+                INSERT INTO recovery_actions (
+                    action_id, schema_version, target_type, target_link_id, target_node_id,
+                    reason, requested_ts_epoch_ms
+                ) VALUES ('bad-action-unmanaged', '1.0', 'link', 'L999', NULL, 'manual', 1)
+                """
+            )
+        return False
+    except sqlite3.IntegrityError:
+        return True
+
 if __name__ == "__main__":
     db = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DB
     conn = init_db(db)
@@ -138,6 +155,10 @@ if __name__ == "__main__":
         "recovery_actions FK": verify_fk_rejects_bad_recovery_target(conn),
     }
     conn.close()
+    
+    # Run the unmanaged connection test after init_db closes
+    results["recovery_actions unmanaged FK"] = verify_unmanaged_connection_fk_rejects(db)
+    
     print(f"Initialized {db}")
     failed = 0
     for name, ok in results.items():

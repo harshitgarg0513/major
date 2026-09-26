@@ -11,7 +11,7 @@ runs:
     notes: null
   - run_id: "run_phase2"
     condition: "predictive"
-    scenario: "pipeline_test"
+    scenario: "congestion_burst"
     repetition_index: 1
     start_ts_epoch_ms: 1735999200000
     end_ts_epoch_ms: 1735999260000

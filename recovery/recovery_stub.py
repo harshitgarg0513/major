@@ -68,6 +68,7 @@ async def execute_action(request: Request):
     try:
         db_path = os.path.join(os.path.dirname(__file__), '../test.db')
         with sqlite3.connect(db_path) as conn:
+            conn.execute('PRAGMA foreign_keys = ON;')
             conn.execute(
                 """
                 INSERT INTO recovery_actions (
@@ -95,8 +96,12 @@ async def execute_action(request: Request):
                     response_body["verification"]["method"]
                 )
             )
+    except sqlite3.IntegrityError as e:
+        logger.error(f"Integrity Error: {e}")
+        return JSONResponse(status_code=400, content={"detail": f"Integrity Error: {e}"})
     except Exception as e:
         logger.error(f"Failed to persist recovery action: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"Failed to persist recovery action: {e}"})
 
     # 4. Validate outgoing confirmation against the JSON Schema before sending
     try:
